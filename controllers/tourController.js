@@ -6,30 +6,29 @@ const ErrorResponse = require("../utils/ErrorResponse");
 
 class tourController {
   static getAllTour = async (req, res, next) => {
-    const filePath = path.join(__dirname, "../data/tours.json");
+    try {
+      //build query
+      const queryObj = { ...req.query };
+      const excludedFields = ["page", "limit", "sort", "fields"];
+      excludedFields.forEach((el) => delete queryObj[el]);
+      console.log(req.query, queryObj);
 
-    fs.readFile(filePath, "utf-8", (err, data) => {
-      if (err) {
-        return res.status(404).json({
-          status: "fail",
-          message: err,
-        });
-      }
+      const query = Tour.find(queryObj);
 
-      try {
-        const tours = JSON.parse(data);
+      //execute query
+      const tours = await query;
 
-        res.status(200).json({
-          status: "success",
-          data: { tours },
-        });
-      } catch (error) {
-        res.status(404).json({
-          status: "fail",
-          message: error,
-        });
-      }
-    });
+      res.status(200).json({
+        status: "success",
+        results: tours.length,
+        data: { tours },
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "fail",
+        message: "Error processing the file",
+      });
+    }
   };
 
   static getTour = async (req, res, next) => {
