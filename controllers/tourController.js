@@ -3,17 +3,52 @@ const fs = require("fs");
 const path = require("path");
 const Tour = require("../model/TourModel");
 const ErrorResponse = require("../utils/ErrorResponse");
+const { match } = require("assert");
 
 class tourController {
   static getAllTour = async (req, res, next) => {
     try {
       //build query
+      //filtering
       const queryObj = { ...req.query };
       const excludedFields = ["page", "limit", "sort", "fields"];
       excludedFields.forEach((el) => delete queryObj[el]);
-      console.log(req.query, queryObj);
 
-      const query = Tour.find(queryObj);
+      //advanced filtering
+      let queryStr = JSON.stringify(queryObj);
+      //prettier-ignore
+      queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
+      console.log(JSON.parse(queryStr));
+
+      let query = Tour.find(JSON.parse(queryStr));
+
+      //sorting
+      if (req.query.sort) {
+        const sortBy = req.query.sort.split(",").join(" ");
+        query = query.sort(sortBy);
+      } else {
+        query = query.sort("-ratingsAverage");
+      }
+      //field limiting
+      if (req.query.fields) {
+        const fields = req.query.fields.split(",").join(" ");
+        query = query.select(fields);
+      } else {
+        query = query.select("-__v");
+      }
+
+      //pagination
+      const page = Math.max(req.query.page * 1 || 1, 1);
+      const limit = Math.max(req.query.limit * 1 || 100, 1);
+      const skip = (page - 1) * limit;
+
+      const totalDocuments = await Tour.countDocuments();
+      const totalPages = Math.ceil(totalDocuments / limit);
+
+      if (skip >= totalDocuments && totalDocuments > 0) {
+        throw new Error("This page does not exist");
+      }
+      query = query.skip(skip).limit(limit);
 
       //execute query
       const tours = await query;
@@ -21,6 +56,13 @@ class tourController {
       res.status(200).json({
         status: "success",
         results: tours.length,
+        pagination: {
+          currentPage: page,
+          totalPages: totalPages,
+          totalDocuments: totalDocuments,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
         data: { tours },
       });
     } catch (error) {
