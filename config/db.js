@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const fs = require("fs");
 const path = require("path");
 const dotenv = require("dotenv");
+const colors = require("colors");
 const Tour = require("../model/TourModel");
 
 dotenv.config({ path: path.join(__dirname, "config.env") });
@@ -24,7 +25,7 @@ const tours = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/tours.jso
 const importData = async () => {
   try {
     await Tour.create(tours);
-    console.log("data successfully imported");
+    console.log("data successfully imported".bgGreen);
     process.exit();
   } catch (err) {
     console.log(err);
@@ -36,7 +37,7 @@ const importData = async () => {
 const deleteData = async () => {
   try {
     await Tour.deleteMany();
-    console.log("data successfully deleted");
+    console.log("data successfully deleted".bgRed);
     process.exit();
   } catch (err) {
     console.log(err);
